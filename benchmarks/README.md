@@ -1,19 +1,19 @@
-# Benchmarking for Speculative Decoding
+# 投机解码基准测试
 
-## Setup
+## 设置
 
-You can create a new environment and install SGLang with the following command:
+你可以使用以下命令创建一个新环境并安装 SGLang：
 
 ```bash
-# create virtual env
+# 创建虚拟环境
 uv venv sglang -p 3.11
 source sglang/bin/activate
 
-# install sglang
+# 安装 sglang
 uv pip install "sglang[all]>=0.4.9.post2"
 ```
 
-You can serve your trained model with SGLang with the following command by replacing the `<target-model-path>` and `<draft-model-path>` with the actual path to the target model and draft model.
+你可以使用以下命令通过 SGLang 服务你训练的模型，将 `<target-model-path>` 和 `<draft-model-path>` 替换为目标模型和草稿模型的实际路径。
 
 ```bash
 python3 -m sglang.launch_server \
@@ -33,9 +33,9 @@ python3 -m sglang.launch_server \
     --dtype bfloat16
 ```
 
-## Run Benchmarks
+## 运行基准测试
 
-You first need to start the SGLang server:
+你首先需要启动 SGLang 服务器：
 
 ```bash
 python3 -m sglang.launch_server \
@@ -55,7 +55,7 @@ python3 -m sglang.launch_server \
     --dtype bfloat16
 ```
 
-Then you can run the benchmarks:
+然后你可以运行基准测试：
 
 ```bash
 # GSM8K

@@ -1,10 +1,10 @@
-## Training with Flex Attention
+## 使用 Flex Attention 训练
 
-Flex attention saves 10x memory and also makes training faster. It is currently in experimental stage. To enable flex attention, you need to pass `--attention-backend flex_attention` to the training script. To allow sharing of compiled kernels, you need to set `TORCHINDUCTOR_CACHE_DIR` to the cache directory.
+Flex attention 节省 10 倍内存，同时也使训练更快。它目前处于实验阶段。要启用 flex attention，你需要向训练脚本传递 `--attention-backend flex_attention`。为了允许共享已编译的内核，你需要将 `TORCHINDUCTOR_CACHE_DIR` 设置为缓存目录。
 
-> <b> Note: Make sure you install torch 2.8.0!</b>
+> <b> 注意：确保你安装了 torch 2.8.0！</b>
 
-Example training script:
+示例训练脚本：
 ```bash
 TORCHINDUCTOR_CACHE_DIR=$ROOT_DIR/cache/compiled_kernels \
 torchrun \
