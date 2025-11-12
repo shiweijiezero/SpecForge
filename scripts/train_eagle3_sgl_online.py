@@ -37,7 +37,7 @@ from specforge.data import (
 )
 from specforge.data.utils import DataCollatorWithPadding
 from specforge.distributed import destroy_distributed, get_dp_group, init_distributed
-from specforge.modeling.target.sgl_model_wrapper import SglangTargetModel
+from specforge.modeling.target import SGLangEagle3TargetModel
 from specforge.modeling.target.target_head import TargetHead
 from specforge.optimizer import BF16Optimizer
 from specforge.tracker import NoOpTracker, create_tracker, get_tracker_class

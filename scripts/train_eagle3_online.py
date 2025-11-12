@@ -2,6 +2,8 @@ import argparse
 import hashlib
 import math
 import os
+import re
+import shutil
 import time
 from argparse import ArgumentParser, Namespace
 from typing import List, Optional, Tuple
@@ -116,8 +118,14 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
     parser.add_argument("--cache-key", type=str, default=None)
     parser.add_argument("--cache-dir", type=str, default="./cache")
     parser.add_argument("--output-dir", type=str, required=True)
-    parser.add_argument("--eval-interval", type=int, default=5000)
-    parser.add_argument("--save-interval", type=int, default=5000)
+    parser.add_argument("--eval-interval", type=int, default=1000)
+    parser.add_argument("--save-interval", type=int, default=2000)
+    parser.add_argument(
+        "--save-total-limit",
+        type=int,
+        default=1,
+        help="The total number of checkpoints to save. If -1, save all checkpoints.",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--dist-timeout",
@@ -378,7 +386,7 @@ def build_dataloaders(
     train_dataloader = prepare_dp_dataloaders(
         train_eagle3_dataset,
         args.target_batch_size,
-        num_workers=4,
+        num_workers=16,
         shuffle=True,
         process_group=get_dp_group(),
         is_vlm=args.is_vlm,
@@ -399,7 +407,7 @@ def build_dataloaders(
         eval_dataloader = prepare_dp_dataloaders(
             eval_eagle3_dataset,
             args.target_batch_size,
-            num_workers=4,
+            num_workers=16,
             shuffle=False,
             process_group=get_dp_group(),
             is_vlm=args.is_vlm,
@@ -453,6 +461,28 @@ def save_checkpoints(
                 state_dict=draft_model_state_dict,
             )
             print_on_rank0(f"Saved model configuration to {epoch_output_dir}")
+
+            # Remove old checkpoints if save_total_limit is set
+            if args.save_total_limit > 0:
+                checkpoint_re = re.compile(r"^epoch_(\d+)_step_(\d+)$")
+                dirs = []
+                for name in os.listdir(args.output_dir):
+                    full_path = os.path.join(args.output_dir, name)
+                    if not os.path.isdir(full_path):
+                        continue
+                    match = checkpoint_re.match(name)
+                    if match:
+                        epoch_num = int(match.group(1))
+                        step_num = int(match.group(2))
+                        dirs.append((step_num, full_path))
+                    else:
+                        print_on_rank0(f"Warning: {name} is not a valid checkpoint directory")
+                # Sort by step number in descending order (keep newest)
+                dirs.sort(key=lambda x: x[0], reverse=True)
+                for i, (_, path) in enumerate(dirs):
+                    if i >= args.save_total_limit:
+                        print_on_rank0(f"Removing old checkpoint: {path}")
+                        shutil.rmtree(path)
         dist.barrier()
 
 
@@ -736,6 +766,13 @@ def main():
             if global_step % args.save_interval == 0:
                 # Save the model
                 save_checkpoints(args, epoch, global_step, eagle3_model, optimizer)
+
+    # ================================================
+    # 8. Save final checkpoint
+    # ================================================
+    print_on_rank0("Training completed, saving final checkpoint...")
+    save_checkpoints(args, args.num_epochs - 1, global_step, eagle3_model, optimizer)
+    print_on_rank0(f"Final checkpoint saved at step {global_step}")
 
     # Close the tracker
     tracker.close()

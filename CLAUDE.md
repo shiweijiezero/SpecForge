@@ -271,6 +271,20 @@ cd PATH-TO-SpecForge
 uv pip install -r requirements.txt --prerelease=allow
 uv pip install -v .
 ```
+```shell
+# 如果用conda
+conda create -n SpecForge python=3.11 -y
+conda activate SpecForge
+conda install pip uv -y
+conda install nvidia::cuda-toolkit
+uv pip install -r requirements.txt --prerelease=allow
+uv pip install -v .
+
+# 如果flashinfer报错，
+export CUDA_HOME=/usr/local/cuda-12.4
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+```
 
 完成这些步骤后,您可以通过运行以下命令来检查安装是否成功。如果安装成功,您应该不会看到任何错误。
 
@@ -327,21 +341,44 @@ python scripts/generate_data_by_target.py \
     --server-address-port 127.0.0.1:30001 127.0.0.1:30002 127.0.0.1:30003 127.0.0.1:30004
 ```
 
-完成这些步骤后,您可以查看 `error.jsonl` 中的错误条目。其中大多数可能是 `request timeout`。然后您可以决定是否要重新生成这些样本。在我的情况下,我选择不重新生成,所以在上传到 Hugging Face 之前直接删除了 error.jsonl。使用以下命令:
+这样生成的是每50000条数据一个文件的多个分片。接下来,我们需要将这些分片合并为训练集和测试集。
+```bash
+(SpecForge) wshiah@zxcpu3:~/code/weijie/SpecForge$ ll cache/generated-dataset/llama-3.1-8b-instruct/ -h
+total 2.6G
+drwxrwxr-x 2 wshiah wshiah   16 Nov 10 20:42 ./
+drwxrwxr-x 3 wshiah wshiah    3 Nov 10 04:11 ../
+-rw-rw-r-- 1 wshiah wshiah 242M Nov 10 08:11 error_0-50000.jsonl
+-rw-rw-r
+-- 1 wshiah wshiah 251M Nov 10 12:25 error_100000-150000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 229M Nov 10 15:13 error_150000-200000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 241M Nov 10 17:23 error_200000-250000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 247M Nov 10 19:20 error_250000-300000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 137M Nov 10 20:42 error_300000-328540.jsonl
+-rw-rw-r-- 1 wshiah wshiah 258M Nov 10 10:18 error_50000-100000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 126M Nov 10 08:11 shard_0-50000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 145M Nov 10 12:25 shard_100000-150000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 182M Nov 10 15:13 shard_150000-200000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 165M Nov 10 17:23 shard_200000-250000.jsonl
+-rw-rw-r-- 1 wshiah wshiah 155M Nov 10 19:20 shard_250000-300000.jsonl
+-rw-rw-r-- 1 wshiah wshiah  95M Nov 10 20:42 shard_300000-328540.jsonl
+-rw-rw-r-- 1 wshiah wshiah 128M Nov 10 10:18 shard_50000-100000.jsonl
 
-```shell
-hf repo create zhuyksir/Ultrachat-Sharegpt-Llama3.1-8B --type dataset
-hf upload /YOUR/PATH/Llama-3.1-8B-Instruct/generated-dataset/ultrachat-llama-3.1-8b-instruct --commit-message "generated dataset by Llama3.1-8B"
+```
+可以用一个简单的python脚本来完成这个任务，
+```bash
+# 合并并随机选择10000条作为测试集，其余全部作为训练集
+python scripts/merge_shards.py --input-dir ./cache/generated-dataset/llama-3.1-8b-instruct --eval-size 10000
+
+# 指定输出目录
+python scripts/merge_shards.py \
+    --input-dir ./cache/generated-dataset/llama-3.1-8b-instruct \
+    --output-dir ./cache/train_dataset/llama-3.1-8b-instruct \
+    --train-size 50000 \
+    --eval-size 5000
 ```
 
-```python
-from datasets import load_dataset
-ds = load_dataset("zhuyksir/Ultrachat-Sharegpt-Llama3.1-8B", split="train")
-ds.to_json("merged.jsonl", orient="records", lines=True)
-ds = ds.train_test_split(test_size=0.05)
-train_ds = ds["train"]
-test_ds = ds["test"]
-```
+
+完成这些步骤后,您可以查看 `error.jsonl` 中的错误条目。其中大多数可能是 `request timeout`。然后您可以决定是否要重新生成这些样本。
 
 每一行应该具有以下结构:
 ```json
@@ -376,6 +413,29 @@ python scripts/build_eagle3_dataset_cache.py \
     --chat-template $CHAT_TEMPLATE \
     --max-length $MAX_LENGTH \
     --view-train-data 1 2
+
+# # 这里draft config词表大小调整一下，跟目标模型一致
+python scripts/build_eagle3_dataset_cache.py \
+    --target-model-path meta-llama/Llama-3.1-8B-Instruct \
+    --draft-model-config ./configs/llama3-8B-eagle3.json \
+    --train-data-path ./cache/train_dataset/llama-3.1-8b-instruct/train.jsonl \
+    --eval-data-path ./cache/train_dataset/llama-3.1-8b-instruct/eval.jsonl \
+    --cache-dir ./cache/preprocess_data_cache_dir/llama-3.1-8b-instruct \
+    --chat-template llama3 \
+    --max-length 4096 \
+    --build-dataset-num-proc 64 \
+    --view-train-data 1 2
+
+```
+
+这样会得到
+```bash
+(SpecForge) wshiah@zxcpu3:~/code/weijie/SpecForge$ ll ./cache/preprocess_data_cache_dir/llama-3.1-8b-instruct/
+total 83
+drwxrwxr-x 4 wshiah wshiah   4 Nov 10 22:09 ./
+drwxrwxr-x 3 wshiah wshiah   3 Nov 10 22:06 ../
+drwxrwxr-x 2 wshiah wshiah 130 Nov 10 22:09 processed_dataset/
+drwxrwxr-x 2 wshiah wshiah   3 Nov 10 22:12 vocab_mapping/
 ```
 
 ### 步骤 3. 开始训练
@@ -385,32 +445,38 @@ python scripts/build_eagle3_dataset_cache.py \
 - 设置 `total-steps=800000, learning-rate=5e-5` 以与 [EAGLE 官方仓库配置](https://github.com/SafeAILab/EAGLE/blob/main/eagle/traineagle3/ds_config.json)保持一致。可以随意更改这些设置来进行您自己的实验。`total-steps` 和 `warmup-ratio` 决定学习率的增长曲线。
 
 ```shell
+# 设置环境变量
 export NUM_GPUS=4
-export OUTPUT_DIR=/YOUR/PATH/Llama-3.1-8B-Instruct/dev_outputs/
-CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun \
+export MODEL_PATH=meta-llama/Llama-3.1-8B-Instruct
+export OUTPUT_DIR=./model/Llama-3.1-8B-Instruct/dev_outputs/
+export DATASET_PATH=./cache/train_dataset/llama-3.1-8b-instruct
+export CACHE_DIR=./cache/preprocess_data_cache_dir/llama-3.1-8b-instruct
+export MAX_LENGTH=4096
+export CHAT_TEMPLATE=llama3
+
+# 开始训练 (使用 train_eagle3_online.py 脚本，支持 SGLang 后端)
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun \
     --standalone \
     --nproc_per_node $NUM_GPUS \
-    scripts/train_eagle3_sgl_online.py \
+    scripts/train_eagle3_online.py \
     --target-model-path $MODEL_PATH \
-    --model-path $MODEL_PATH \
     --draft-model-config ./configs/llama3-8B-eagle3.json \
-    --train-data-path $DATASET_PATH/sharegpt_ultrachat_train.jsonl \
-    --eval-data-path $DATASET_PATH/sharegpt_ultrachat_test.jsonl \
+    --train-data-path $DATASET_PATH/train.jsonl \
+    --eval-data-path $DATASET_PATH/eval.jsonl \
     --tp-size $NUM_GPUS \
     --output-dir $OUTPUT_DIR \
-    --num-epochs 10 \
+    --num-epochs 1 \
     --batch-size 1 \
     --learning-rate 5e-5 \
-    --draft-attention-backend flex_attention \
+    --attention-backend flex_attention \
     --max-length $MAX_LENGTH \
     --chat-template $CHAT_TEMPLATE \
     --cache-dir $CACHE_DIR \
-    --mem-frac=0.4 \
-    --total-steps=800000 \
-    --dist-timeout=10 \
-    --wandb-project llama3-8b-eagle3 \
-    --wandb-name sgl-online \
-    --report-to wandb
+    --dist-timeout 10 \
+    --wandb-project llama3-8b \
+    --wandb-name eagle3-online-sglang \
+    --report-to wandb \
+    --target-model-backend sglang
 ```
 
 ### 步骤 4. 基准测试
@@ -428,12 +494,34 @@ config_list=(
 )
 CUDA_VISIBLE_DEVICES=4,5,6,7 python3 bench_model_speedup.py \
     --model-path meta-llama/Llama-3.1-8B-Instruct \
-    --speculative-draft-model-path /YOUR/PATH/Llama-3.1-8B-Instruct/dev_outputs/epoch_0 \
+    --speculative-draft-model-path model/Llama-3.1-8B-Instruct/dev_outputs/epoch_0_step_10000 \
     --port 20001 \
     --trust-remote-code \
     --mem-fraction-static 0.8 \
     --tp-size 4 \
     --config-list "${config_list[@]}" \
     --benchmark-list mtbench:80 gsm8k:200 humaneval:200 math500:200 \
-    --output output.jsonl
+    --output output_Llama-3.1-8B-Instruct.jsonl
+
+
+# 定义推理配置列表
+config_list=(
+    "1,0,0,0"      # baseline: 无投机解码
+    "4,3,1,4"      # 配置1: batch=4, steps=3, topk=1, draft_tokens=4
+    "4,5,1,6"      # 配置2: batch=4, steps=5, topk=1, draft_tokens=6
+    "4,7,10,60"    # 配置3: batch=4, steps=7, topk=10, draft_tokens=60
+)
+# 运行 benchmark（一次性测试所有 6 个数据集）
+CUDA_VISIBLE_DEVICES=2 uv run benchmarks/bench_model_speedup.py \
+      --model-path meta-llama/Llama-3.1-8B-Instruct \
+      --speculative-draft-model-path ./model/Llama-3.1-8B-Instruct/dev_outputs/epoch_0_step_10000 \
+      --port 30000 \
+      --enable-multi-turn-conversation \
+      --trust-remote-code \
+      --mem-fraction-static 0.7 \
+      --tp-size 1 \
+      --config-list "${config_list[@]}" \
+      --benchmark-list mtbench:80 gsm8k:200 humaneval:164 math500:200 ceval:200 cmmlu:200 \
+      --temperature 0.0 0.7 1.0 1.2 \
+      --output results_all_temps.jsonl
 ```

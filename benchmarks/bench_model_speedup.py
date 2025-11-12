@@ -83,6 +83,13 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        nargs="+",
+        default=[0.0],
+        help='Sampling temperature(s) for generation. Can specify multiple values. Example: --temperature 0.0 0.7 1.0',
+    )
     return parser.parse_args()
 
 
@@ -260,7 +267,7 @@ class RequestFuncObject:
     model_name: str
     system_prompt: Optional[str]
     temperature: float = 0.0
-    max_tokens: int = 2048
+    max_tokens: int = 4096
     output_conversations: Optional[List[Dict[str, str]]] = None
     output_tokens: int = 0
     error: Optional[str] = None
@@ -316,6 +323,7 @@ async def run_benchmark(
     server_args: ServerArgs,
     client: AsyncOpenAI,
     semaphore: Optional[asyncio.Semaphore] = None,
+    args = None,
 ):
     pbar = tqdm(total=len(conversation_list))
     tasks = []
@@ -325,8 +333,8 @@ async def run_benchmark(
             input_conversations=conversation,
             model_name=server_args.model_path,
             system_prompt=SYSTEM_PROMPT,
-            temperature=0.0,
-            max_tokens=512,
+            temperature=args.temperature,
+            max_tokens=4096,
         )
         tasks.append(
             asyncio.create_task(
@@ -368,6 +376,13 @@ def main():
     configs = [tuple(map(int, config.split(","))) for config in args.config_list]
     # max_batch_size = max(batch_size for batch_size, _, _, _ in configs)
 
+    # Convert temperature to list if single value provided
+    if not isinstance(args.temperature, list):
+        args.temperature = [args.temperature]
+
+    print(f"Will test {len(args.temperature)} temperature(s): {args.temperature}")
+    print(f"Will test {len(configs)} config(s): {args.config_list}")
+
     benchmark_list = [tuple(b.split(":")) for b in args.benchmark_list]
     bench_conversations = {}
     for bench_name, num_prompts in benchmark_list:
@@ -407,7 +422,7 @@ def main():
             semaphore = asyncio.Semaphore(batch_size)
             start_timestamp = time.perf_counter()
             outputs = asyncio.run(
-                run_benchmark(conversation_list, server_args, client, semaphore)
+                run_benchmark(conversation_list, server_args, client, semaphore, args)
             )
             duration = time.perf_counter() - start_timestamp
             completion_tokens = sum(req_obj.output_tokens for req_obj in outputs)
@@ -419,40 +434,59 @@ def main():
             )
         exit()
 
+    # Loop over configs (start server once per config)
     for batch_size, steps, topk, num_draft_tokens in configs:
+        print(f"\n{'='*60}")
+        print(f"Testing config: batch_size={batch_size}, steps={steps}, topk={topk}, draft_tokens={num_draft_tokens}")
+        print(f"{'='*60}\n")
+
         process = launch_sglang_server(
             server_args, base_url, batch_size, steps, topk, num_draft_tokens
         )
-        for bench_name, conversation_list in bench_conversations.items():
-            semaphore = asyncio.Semaphore(batch_size)
-            start_timestamp = time.perf_counter()
-            outputs = asyncio.run(
-                run_benchmark(conversation_list, server_args, client, semaphore)
-            )
-            duration = time.perf_counter() - start_timestamp
-            completion_tokens = sum(req_obj.output_tokens for req_obj in outputs)
-            time.sleep(3)
-            if steps > 0:
-                acc_length = send_get_accept_length_request(base_url)
-            else:
-                # steps == 0 means no speculative algorithm is used
-                acc_length = 1.0
-            record = {
-                "batch_size": batch_size,
-                "steps": steps,
-                "topk": topk,
-                "num_draft_tokens": num_draft_tokens,
-                "acc_length": (
-                    float(f"{acc_length:.2f}") if acc_length is not None else None
-                ),
-                "duration": float(f"{duration:.2f}"),
-                "throughput": float(f"{completion_tokens / duration:.2f}"),
-                "completion_tokens": completion_tokens,
-                "benchmark": bench_name,
-            }
-            send_flush_cache_request(base_url)
-            with open(args.output, "a") as fout:
-                fout.write(json.dumps(record) + "\n")
+
+        # Loop over temperatures (reuse same server)
+        for temp_idx, temperature in enumerate(args.temperature):
+            print(f"\n  → Testing temperature {temperature} ({temp_idx+1}/{len(args.temperature)})")
+
+            # Create a copy of args with current temperature
+            import copy
+            args_for_this_temp = copy.copy(args)
+            args_for_this_temp.temperature = temperature
+
+            for bench_name, conversation_list in bench_conversations.items():
+                semaphore = asyncio.Semaphore(batch_size)
+                start_timestamp = time.perf_counter()
+                outputs = asyncio.run(
+                    run_benchmark(conversation_list, server_args, client, semaphore, args_for_this_temp)
+                )
+                duration = time.perf_counter() - start_timestamp
+                completion_tokens = sum(req_obj.output_tokens for req_obj in outputs)
+                time.sleep(3)
+                if steps > 0:
+                    acc_length = send_get_accept_length_request(base_url)
+                else:
+                    # steps == 0 means no speculative algorithm is used
+                    acc_length = 1.0
+                record = {
+                    "batch_size": batch_size,
+                    "steps": steps,
+                    "topk": topk,
+                    "num_draft_tokens": num_draft_tokens,
+                    "acc_length": (
+                        float(f"{acc_length:.2f}") if acc_length is not None else None
+                    ),
+                    "duration": float(f"{duration:.2f}"),
+                    "throughput": float(f"{completion_tokens / duration:.2f}"),
+                    "completion_tokens": completion_tokens,
+                    "benchmark": bench_name,
+                    "temperature": temperature,
+                    "config": f"{batch_size},{steps},{topk},{num_draft_tokens}",
+                }
+                send_flush_cache_request(base_url)
+                with open(args.output, "a") as fout:
+                    fout.write(json.dumps(record) + "\n")
+
+        # Kill server after testing all temperatures for this config
         kill_process_tree(process.pid)
 
 
