@@ -118,7 +118,7 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
     parser.add_argument("--cache-key", type=str, default=None)
     parser.add_argument("--cache-dir", type=str, default="./cache")
     parser.add_argument("--output-dir", type=str, required=True)
-    parser.add_argument("--eval-interval", type=int, default=1000)
+    parser.add_argument("--eval-interval", type=int, default=2000)
     parser.add_argument("--save-interval", type=int, default=2000)
     parser.add_argument(
         "--save-total-limit",

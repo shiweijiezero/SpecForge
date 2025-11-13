@@ -90,7 +90,7 @@ python scripts/build_eagle3_dataset_cache.py \
 echo ""
 echo "步骤 5: 开始 Eagle3 在线训练..."
 mkdir -p ./model/Qwen2.5-7B-Instruct/dev_outputs
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun \
+CUDA_VISIBLE_DEVICES=0,2,3,4 torchrun \
     --standalone \
     --nproc_per_node 4 \
     scripts/train_eagle3_online.py \
@@ -108,8 +108,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun \
     --chat-template qwen \
     --cache-dir ./cache/preprocess_data_cache_dir/qwen2.5-7b-instruct \
     --dist-timeout 10 \
-    --wandb-project qwen2.5-7b \
-    --wandb-name eagle3-online \
+    --wandb-project spec_decoding \
+    --wandb-name eagle3-online-qwen2.5-7B \
     --report-to wandb \
     --target-model-backend sglang \
     --embedding-key model.embed_tokens.weight \

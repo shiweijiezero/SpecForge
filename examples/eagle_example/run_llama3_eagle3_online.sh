@@ -89,7 +89,7 @@ python scripts/build_eagle3_dataset_cache.py \
 echo ""
 echo "步骤 5: 开始 Eagle3 在线训练..."
 mkdir -p ./model/Llama-3.1-8B-Instruct/dev_outputs
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun \
+CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun \
     --standalone \
     --nproc_per_node 4 \
     scripts/train_eagle3_online.py \
@@ -107,10 +107,11 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun \
     --chat-template llama3 \
     --cache-dir ./cache/preprocess_data_cache_dir/llama-3.1-8b-instruct \
     --dist-timeout 10 \
-    --wandb-project llama3-8b \
-    --wandb-name eagle3-online \
+    --wandb-project spec_decoding \
+    --wandb-name eagle3-online-Llama3.1-8B \
     --report-to wandb \
-    --target-model-backend sglang
+    --target-model-backend sglang \
+    --ttt-length 7
 
 # ---------- 步骤 6: 基准测试（可选） ----------
 echo ""

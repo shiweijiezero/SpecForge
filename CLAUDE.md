@@ -414,7 +414,7 @@ python scripts/build_eagle3_dataset_cache.py \
     --max-length $MAX_LENGTH \
     --view-train-data 1 2
 
-# # 这里draft config词表大小调整一下，跟目标模型一致
+# # 这里draft config词表大小调整一下，跟目标模型一致，当然小词表draft模型更小
 python scripts/build_eagle3_dataset_cache.py \
     --target-model-path meta-llama/Llama-3.1-8B-Instruct \
     --draft-model-config ./configs/llama3-8B-eagle3.json \
