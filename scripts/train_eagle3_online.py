@@ -135,8 +135,7 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
     )
     parser.add_argument("--attention-backend", type=str, default="flex_attention")
 
-    # resume
-    parser.add_argument("--resume", action="store_true")
+    # resume (removed - now auto-detects checkpoints)
 
     parser.add_argument(
         "--report-to",
@@ -321,12 +320,16 @@ def build_draft_model(args: Namespace) -> Tuple[AutoDraftModelConfig, nn.Module]
         # Use provided config file
         draft_model_config = AutoDraftModelConfig.from_file(args.draft_model_config)
 
-    # detecting last ckpt for draft model
+    # detecting last ckpt for draft model (auto-resume if checkpoint exists)
     draft_model_last_checkpoint = None
-    if args.resume and os.path.isdir(args.output_dir):
-        print_on_rank0(args.output_dir)
+    if os.path.isdir(args.output_dir):
+        print_on_rank0(f"Checking for existing checkpoints in {args.output_dir}")
         draft_model_last_checkpoint = get_last_checkpoint(args.output_dir)
-        print_on_rank0(f"Last checkpoint detected: {draft_model_last_checkpoint}")
+        if draft_model_last_checkpoint:
+            print_on_rank0(f"Last checkpoint detected: {draft_model_last_checkpoint}")
+            print_on_rank0("Will resume training from this checkpoint")
+        else:
+            print_on_rank0("No checkpoint found, starting training from scratch")
 
     if draft_model_last_checkpoint:
         draft_model = AutoEagle3DraftModel.from_pretrained(
@@ -669,19 +672,46 @@ def main():
     print_with_rank("Initialized optimizer and scheduler")
 
     # ================================================
-    # 6. Build tracker
+    # 6. Load training state if resuming
     # ================================================
-    tracker = build_tracker(args, parser)
     global_step = 0
     start_epoch = 0
+
+    if draft_model_last_checkpoint:
+        training_state_path = os.path.join(draft_model_last_checkpoint, "training_state.pt")
+        if os.path.exists(training_state_path):
+            print_on_rank0(f"Loading training state from {training_state_path}")
+            training_state = torch.load(training_state_path, map_location="cpu")
+
+            # Restore epoch and step
+            start_epoch = training_state.get("epoch", 0)
+            global_step = training_state.get("global_step", 0)
+
+            # Restore optimizer state
+            optimizer_state = {
+                "optimizer_state_dict": training_state.get("optimizer_state_dict"),
+                "scheduler_state_dict": training_state.get("scheduler_state_dict"),
+            }
+            optimizer.load_state_dict(optimizer_state)
+
+            print_on_rank0(f"Resumed from epoch {start_epoch}, global_step {global_step}")
+            print_on_rank0(f"Learning rate: {optimizer.get_learning_rate()}")
+        else:
+            print_on_rank0(f"Warning: training_state.pt not found in {draft_model_last_checkpoint}")
+            print_on_rank0("Starting from scratch with loaded model weights")
+
+    # ================================================
+    # 7. Build tracker
+    # ================================================
+    tracker = build_tracker(args, parser)
     dist.barrier()
 
     last_time = time.time()
 
     # ================================================
-    # 7. Start training
+    # 8. Start training
     # ================================================
-    print_on_rank0(f"Starting training from epoch {start_epoch}")
+    print_on_rank0(f"Starting training from epoch {start_epoch}, global_step {global_step}")
 
     for epoch in range(start_epoch, args.num_epochs):
         # Run training
@@ -699,7 +729,7 @@ def main():
             global_step += 1
 
             # ================================================
-            # 7.1 Training Step
+            # 8.1 Training Step
             # ================================================
             plosses, acces = run_forward(args, eagle3_model, data, target_model)
             run_backward_and_update(args, plosses, optimizer, global_step)
@@ -724,7 +754,7 @@ def main():
                 )
 
             # ================================================
-            # 7.2 Evaluation Step
+            # 8.2 Evaluation Step
             # ================================================
             if (
                 args.eval_data_path is not None
@@ -761,14 +791,14 @@ def main():
                 )
 
             # ================================================
-            # 7.3 Save Checkpoints
+            # 8.3 Save Checkpoints
             # ================================================
             if global_step % args.save_interval == 0:
                 # Save the model
                 save_checkpoints(args, epoch, global_step, eagle3_model, optimizer)
 
     # ================================================
-    # 8. Save final checkpoint
+    # 9. Save final checkpoint
     # ================================================
     print_on_rank0("Training completed, saving final checkpoint...")
     save_checkpoints(args, args.num_epochs - 1, global_step, eagle3_model, optimizer)
