@@ -1,0 +1,107 @@
+{
+  "_comment": "Medusa configuration for LLaMA 3.1 8B",
+  "_comment_fairness": "Parameters aligned with Eagle3 (configs/llama3-8B-eagle3.json) for fair comparison",
+
+  "architectures": [
+    "LlamaForCausalLMMedusa"
+  ],
+  "model_type": "llama",
+  "torch_dtype": "float16",
+  "transformers_version": "4.28.1",
+
+  "_comment_base_model_config": "从LLaMA 3.1 8B继承的配置",
+  "bos_token_id": 128000,
+  "eos_token_id": 128001,
+  "pad_token_id": 0,
+  "hidden_act": "silu",
+  "hidden_size": 4096,
+  "intermediate_size": 14336,
+  "max_position_embeddings": 2048,
+  "num_attention_heads": 32,
+  "num_key_value_heads": 8,
+  "rms_norm_eps": 1e-05,
+  "initializer_range": 0.02,
+  "tie_word_embeddings": false,
+  "use_cache": true,
+
+  "_comment_vocab": "词表配置 - 与Eagle3对齐",
+  "vocab_size": 128256,
+  "draft_vocab_size": 32000,
+  "_vocab_mapping_required": true,
+  "_vocab_mapping_file": "cache/vocab_mapping_llama3.pt",
+
+  "_comment_draft_model": "Draft model配置 - Medusa特定",
+  "num_hidden_layers": 0,
+  "_explanation_layers": "Medusa没有额外的Transformer层，只有heads",
+
+  "_comment_medusa_specific": "Medusa算法专用参数",
+  "medusa_num_heads": 4,
+  "_explanation_num_heads": "论文推荐3-5个heads，我们选择4个平衡性能和计算",
+  "_paper_reference_heads": "Medusa (arXiv:2401.10774) Table 2",
+
+  "medusa_num_layers": 1,
+  "_explanation_num_layers": "每个head的ResBlock层数，论文默认1层",
+
+  "_comment_training_hyperparameters": "推荐的训练超参数（与Eagle3对齐以保证公平对比）",
+  "_training": {
+    "learning_rate": 1e-4,
+    "_lr_note": "与Eagle3相同(1e-4)，论文建议Medusa-1可用1e-3但为公平对比使用1e-4",
+    "_lr_paper": "AWS实现用1e-4 constant LR",
+
+    "batch_size_per_device": 1,
+    "_batch_note": "与Eagle3相同，per device batch size",
+
+    "gradient_accumulation_steps": 4,
+    "_gradient_note": "有效batch size = 1 * 4 = 4，论文用16但我们用4节省内存",
+
+    "num_epochs": 10,
+    "_epoch_note": "与Eagle3相同(10 epochs)",
+
+    "warmup_ratio": 0.015,
+    "_warmup_note": "与Eagle3相同(0.015)，论文用0.1但我们对齐Eagle3",
+
+    "max_grad_norm": 0.5,
+    "_grad_clip_note": "与Eagle3相同，梯度裁剪阈值",
+
+    "optimizer": "AdamW",
+    "weight_decay": 0.0,
+    "_weight_decay_note": "Medusa heads通常不需要weight decay",
+
+    "lr_scheduler_type": "cosine",
+    "_scheduler_note": "与Eagle3相同，cosine annealing with warmup",
+
+    "max_length": 2048,
+    "_length_note": "序列最大长度",
+
+    "chat_template": "llama3",
+    "_template_note": "使用LLaMA 3的chat template"
+  },
+
+  "_comment_comparison_eagle3": "与Eagle3的对比",
+  "_comparison": {
+    "same_as_eagle3": [
+      "learning_rate (1e-4)",
+      "batch_size_per_device (1)",
+      "num_epochs (10)",
+      "warmup_ratio (0.015)",
+      "max_grad_norm (0.5)",
+      "draft_vocab_size (32000)",
+      "vocab_mapping (required)",
+      "lr_scheduler (cosine)"
+    ],
+    "different_from_eagle3": [
+      "num_hidden_layers: 0 vs 1 (Medusa无draft backbone)",
+      "medusa_num_heads: 4 vs 1 (Medusa多头预测)",
+      "training_method: 单次forward vs TTT递归",
+      "参数量: ~52M (4 heads) vs ~135M (1 layer backbone)"
+    ]
+  },
+
+  "_comment_usage": "使用方法",
+  "_usage_example": {
+    "train_command": "bash examples/medusa/run_llama3_medusa_online.sh",
+    "load_in_sglang": "speculative_draft_model_path='path/to/medusa/checkpoint'",
+    "num_steps": 4,
+    "_note": "speculative_num_steps应等于medusa_num_heads"
+  }
+}
