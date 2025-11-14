@@ -23,7 +23,7 @@ python scripts/generate_data_by_target.py \
     --model-name openai/gpt-oss-120b \
     --raw-data-file $DATASET_PATH/perfectblend_train.jsonl \
     --output-dir $PERSIST_DIR/gpt-oss-120b-generated/perfectblend \
-    --max-concurrency 512 \
+    --max-concurrency 256 \
     --num-per-shard 50000 \
     --server-address-port 127.0.0.1:30001
 
@@ -31,7 +31,7 @@ python scripts/generate_data_by_target.py \
     --model-name openai/gpt-oss-120b \
     --raw-data-file $DATASET_PATH/magpie-qwen2.5-pro-1m-v0.1_train.jsonl \
     --output-dir $PERSIST_DIR/gpt-oss-120b-generated/magpie-qwen2.5-pro-1m-v0.1 \
-    --max-concurrency 512 \
+    --max-concurrency 256 \
     --num-per-shard 50000 \
     --server-address-port 127.0.0.1:30001
 

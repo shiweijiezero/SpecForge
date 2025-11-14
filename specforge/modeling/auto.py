@@ -21,6 +21,7 @@ from transformers import (
 )
 
 from .draft.llama3_eagle import LlamaForCausalLMEagle3
+from .draft.llama3_medusa import LlamaForCausalLMMedusa
 from .target.custom_backend import (
     GptOssForCausalLM,
     Llama4ForCausalLM,
@@ -38,6 +39,11 @@ class AutoEagle3DraftModel(AutoModelForCausalLMBase):
         LlamaConfig: LlamaForCausalLMEagle3,
     }
 
+    # Medusa model mapping (shares same registry for now)
+    _medusa_model_mapping = {
+        LlamaConfig: LlamaForCausalLMMedusa,
+    }
+
     @classmethod
     def from_config(cls, config: PretrainedConfig, torch_dtype=None, **config_kwargs):
         """
@@ -50,8 +56,24 @@ class AutoEagle3DraftModel(AutoModelForCausalLMBase):
         Returns:
             A model instance.
         """
-        # get the model class from the
-        _model_cls = cls._model_mapping[type(config)]
+        # Check if this is a Medusa model
+        architectures = getattr(config, "architectures", [])
+        is_medusa = any("Medusa" in arch for arch in architectures)
+
+        # Select appropriate model mapping
+        if is_medusa:
+            _model_cls = cls._medusa_model_mapping.get(type(config))
+            if _model_cls is None:
+                raise ValueError(
+                    f"Medusa model for config type {type(config)} not found in _medusa_model_mapping"
+                )
+        else:
+            _model_cls = cls._model_mapping.get(type(config))
+            if _model_cls is None:
+                raise ValueError(
+                    f"Model for config type {type(config)} not found in _model_mapping"
+                )
+
         model = _model_cls(config, **config_kwargs)
 
         # Convert model to specified dtype if provided
@@ -135,6 +157,7 @@ class AutoDraftModelConfig:
 
     _config_mapping = {
         "LlamaForCausalLMEagle3": LlamaConfig,
+        "LlamaForCausalLMMedusa": LlamaConfig,
     }
 
     @classmethod

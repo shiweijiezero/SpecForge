@@ -1,6 +1,7 @@
 # from .auto import AutoDistributedTargetModel, AutoDraftModelConfig, AutoEagle3DraftModel
 from .auto import AutoDraftModelConfig, AutoEagle3DraftModel
 from .draft.llama3_eagle import LlamaForCausalLMEagle3
+from .draft.llama3_medusa import LlamaForCausalLMMedusa
 from .target.eagle3_target_model import (
     CustomEagle3TargetModel,
     HFEagle3TargetModel,
@@ -10,6 +11,7 @@ from .target.eagle3_target_model import (
 
 __all__ = [
     "LlamaForCausalLMEagle3",
+    "LlamaForCausalLMMedusa",
     "SGLangEagle3TargetModel",
     "HFEagle3TargetModel",
     "CustomEagle3TargetModel",

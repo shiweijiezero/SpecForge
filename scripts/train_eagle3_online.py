@@ -24,6 +24,7 @@ from specforge import (
     AutoDraftModelConfig,
     AutoEagle3DraftModel,
     OnlineEagle3Model,
+    OnlineMedusaModel,
     QwenVLOnlineEagle3Model,
 )
 from specforge.data import (
@@ -195,7 +196,7 @@ def parse_args() -> Tuple[ArgumentParser, Namespace]:
         "--max-pixels", type=int, default=802816
     )  # 1024*28*28 for qwen2.5-vl
 
-    parser.add_argument("--build-dataset-num-proc", type=int, default=8)
+    parser.add_argument("--build-dataset-num-proc", type=int, default=32)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--profile", action="store_true")
     parser.add_argument("--profile-start-step", type=int, default=30)
@@ -429,7 +430,7 @@ def save_checkpoints(
     args: Namespace,
     epoch: int,
     step: int,
-    eagle3_model: nn.Module,
+    spec_model: nn.Module,
     optimizer: Optimizer,
 ):
     epoch_output_dir = os.path.join(args.output_dir, f"epoch_{epoch}_step_{step}")
@@ -437,8 +438,8 @@ def save_checkpoints(
         os.makedirs(epoch_output_dir, exist_ok=True)
     dist.barrier()
 
-    with FSDP.state_dict_type(eagle3_model, StateDictType.FULL_STATE_DICT):
-        model_state_dict = eagle3_model.state_dict()
+    with FSDP.state_dict_type(spec_model, StateDictType.FULL_STATE_DICT):
+        model_state_dict = spec_model.state_dict()
         state_to_save = {
             "epoch": epoch,
             "global_step": step,
@@ -459,7 +460,7 @@ def save_checkpoints(
             print_on_rank0(
                 f"Saved full training state to {epoch_output_dir}/training_state.pt"
             )
-            eagle3_model.draft_model.save_pretrained(
+            spec_model.draft_model.save_pretrained(
                 epoch_output_dir,
                 state_dict=draft_model_state_dict,
             )
@@ -491,12 +492,12 @@ def save_checkpoints(
 
 def run_forward(
     args: Namespace,
-    eagle3_model: nn.Module,
+    spec_model: nn.Module,
     data: dict,
     target_model: Optional[Eagle3TargetModel] = None,
 ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
     if args.is_vlm:
-        plosses, _, acces = eagle3_model(
+        plosses, _, acces = spec_model(
             input_ids=data["input_ids"].cuda(),
             attention_mask=data["attention_mask"].cuda(),
             loss_mask=data["loss_mask"].cuda(),
@@ -518,7 +519,7 @@ def run_forward(
         eagle3_data.target = get_dp_data_shard_from_tp(eagle3_data.target)
         eagle3_data.hidden_states = get_dp_data_shard_from_tp(eagle3_data.hidden_states)
 
-        plosses, _, acces = eagle3_model(
+        plosses, _, acces = spec_model(
             input_ids=eagle3_data.input_ids,
             attention_mask=eagle3_data.attention_mask,
             loss_mask=eagle3_data.loss_mask,
@@ -559,7 +560,7 @@ def record_metrcs(
     accuracies = torch.stack(accuracies)
     plosses = torch.stack(plosses)
 
-    assert accuracies.shape[0] == args.ttt_length
+    # No assertion - support both Eagle3 (ttt_length positions) and Medusa (num_heads)
     dist.all_reduce(accuracies, op=dist.ReduceOp.AVG)
     accuracies = accuracies.cpu().tolist()
     for i in range(len(accuracies)):
@@ -627,13 +628,24 @@ def main():
         print_with_rank(f"Using provided total_steps: {args.total_steps}")
 
     # ================================================
-    # 4. Build Eagle3 model
+    # 4. Build Speculative Decoding model (Eagle3/Medusa)
     # ================================================
-    if (
+    # Check if this is a Medusa model
+    architectures = getattr(draft_model_config, "architectures", [])
+    is_medusa = any("Medusa" in arch for arch in architectures)
+
+    if is_medusa:
+        print_with_rank("Detected Medusa model, using OnlineMedusaModel")
+        spec_model = OnlineMedusaModel(
+            draft_model=draft_model,
+            attention_backend=args.attention_backend,
+        )
+    elif (
         args.is_vlm
         and getattr(draft_model_config, "target_model_type", None) == "qwen2_5_vl"
     ):
-        eagle3_model = QwenVLOnlineEagle3Model(
+        print_with_rank("Detected VLM model, using QwenVLOnlineEagle3Model")
+        spec_model = QwenVLOnlineEagle3Model(
             target_model=target_model,
             draft_model=draft_model,
             processor=processor,
@@ -641,14 +653,15 @@ def main():
             attention_backend=args.attention_backend,
         )
     else:
-        eagle3_model = OnlineEagle3Model(
+        print_with_rank("Using OnlineEagle3Model")
+        spec_model = OnlineEagle3Model(
             draft_model=draft_model,
             length=args.ttt_length,
             attention_backend=args.attention_backend,
         )
 
-    eagle3_model = FSDP(
-        eagle3_model,
+    spec_model = FSDP(
+        spec_model,
         use_orig_params=True,
         mixed_precision=MixedPrecision(
             param_dtype=torch.bfloat16,
@@ -657,7 +670,8 @@ def main():
         sharding_strategy=ShardingStrategy.SHARD_GRAD_OP,
         process_group=dist.group.WORLD,  # the draft model should run dp for all processes
     )
-    print_with_rank("Initialized Eagle3 FSDP model")
+    model_type = "Medusa" if is_medusa else "Eagle3"
+    print_with_rank(f"Initialized {model_type} FSDP model")
 
     # ================================================
     # 5. Build optimizer and scheduler
@@ -731,7 +745,7 @@ def main():
             # ================================================
             # 8.1 Training Step
             # ================================================
-            plosses, acces = run_forward(args, eagle3_model, data, target_model)
+            plosses, acces = run_forward(args, spec_model, data, target_model)
             run_backward_and_update(args, plosses, optimizer, global_step)
 
             # log training metrics
@@ -762,13 +776,13 @@ def main():
             ):
                 # Run evaluation
                 draft_model.eval()
-                eval_acces = [[] for _ in range(eagle3_model.length)]
-                eval_plosses = [[] for _ in range(eagle3_model.length)]
+                eval_acces = [[] for _ in range(spec_model.length)]
+                eval_plosses = [[] for _ in range(spec_model.length)]
 
                 for data in tqdm(eval_dataloader, desc=f"Evaluating Epoch {epoch}"):
                     with torch.no_grad():
                         plosses, acces = run_forward(
-                            args, eagle3_model, data, target_model
+                            args, spec_model, data, target_model
                         )
                         eval_acces = [
                             eval_acces[i] + [acces[i]] for i in range(len(acces))
@@ -795,13 +809,13 @@ def main():
             # ================================================
             if global_step % args.save_interval == 0:
                 # Save the model
-                save_checkpoints(args, epoch, global_step, eagle3_model, optimizer)
+                save_checkpoints(args, epoch, global_step, spec_model, optimizer)
 
     # ================================================
     # 9. Save final checkpoint
     # ================================================
     print_on_rank0("Training completed, saving final checkpoint...")
-    save_checkpoints(args, args.num_epochs - 1, global_step, eagle3_model, optimizer)
+    save_checkpoints(args, args.num_epochs - 1, global_step, spec_model, optimizer)
     print_on_rank0(f"Final checkpoint saved at step {global_step}")
 
     # Close the tracker
