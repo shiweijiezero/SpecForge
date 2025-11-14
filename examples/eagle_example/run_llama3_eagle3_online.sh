@@ -131,7 +131,8 @@ config_list=(
  "4,7,10,60"    # 配置2 batch=4, steps=7, topk=10, draft_tokens=60
 )
 # # 运行 benchmark（使用硬编码路径避免环境变量问题）
-SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 CUDA_VISIBLE_DEVICES=4 python benchmarks/bench_model_speedup.py \
+mkdir -p results
+SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 CUDA_VISIBLE_DEVICES=2 python benchmarks/bench_model_speedup.py \
  --model-path meta-llama/Llama-3.1-8B-Instruct \
  --speculative-draft-model-path ./model/Llama-3.1-8B-Instruct/dev_outputs/epoch_0_step_10000 \
  --port 30000 \
@@ -142,7 +143,7 @@ SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 CUDA_VISIBLE_DEVICES=4 python benchm
  --config-list "${config_list[@]}" \
  --benchmark-list mtbench:80 gsm8k:200 humaneval:164 math500:200 ceval:200 cmmlu:200 \
  --temperature 0.0 0.7 1.0 1.2 \
- --output results/llama3_results.jsonl
+ --output results/eagle3_llama3_results.jsonl
 
 echo ""
 echo "============================================"

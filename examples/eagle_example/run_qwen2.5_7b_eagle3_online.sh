@@ -90,7 +90,7 @@ python scripts/build_eagle3_dataset_cache.py \
 echo ""
 echo "步骤 5: 开始 Eagle3 在线训练..."
 mkdir -p ./model/Qwen2.5-7B-Instruct/dev_outputs
-CUDA_VISIBLE_DEVICES=0,2,3,4 torchrun \
+CUDA_VISIBLE_DEVICES=0,4,5,6,7 torchrun \
     --standalone \
     --nproc_per_node 4 \
     scripts/train_eagle3_online.py \
@@ -134,6 +134,7 @@ config_list=(
  "4,7,10,60"    # 配置2
 )
 # # 运行 benchmark（使用硬编码路径避免环境变量问题）
+mkdir -p results
 CUDA_VISIBLE_DEVICES=4 python benchmarks/bench_model_speedup.py \
  --model-path Qwen/Qwen2.5-7B-Instruct \
  --speculative-draft-model-path ./model/Qwen2.5-7B-Instruct/dev_outputs/epoch_0_step_10000 \
@@ -145,7 +146,7 @@ CUDA_VISIBLE_DEVICES=4 python benchmarks/bench_model_speedup.py \
  --config-list "${config_list[@]}" \
  --benchmark-list mtbench:80 gsm8k:200 humaneval:164 math500:200 ceval:200 cmmlu:200 \
  --temperature 0.0 0.7 1.0 1.2 \
- --output results/qwen2.5_7b_results.jsonl
+ --output results/eagle3_qwen2.5_7b_results.jsonl
 
 echo ""
 echo "============================================"
