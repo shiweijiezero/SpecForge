@@ -1,3 +1,3 @@
-## 🤖 Benchmarking On SGLang
+## 🤖 在 SGLang 上进行基准测试
 
-Please refer to the [benchmarks](./benchmarks/README.md) document for more details.
+请参阅 [benchmarks](./benchmarks/README.md) 文档了解更多详情。

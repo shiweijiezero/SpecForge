@@ -1,8 +1,8 @@
-# 📦 Installation
+# 📦 安装
 
-To install this project, you can simply run the following command.
+安装本项目，你可以简单地运行以下命令。
 
-- Install from source (recommended)
+- 从源码安装（推荐）
 
 ```bash
 git clone https://github.com/sgl-project/SpecForge.git
@@ -10,7 +10,7 @@ git clone https://github.com/sgl-project/SpecForge.git
 pip install -v .
 ```
 
-- Install from PyPI
+- 从 PyPI 安装
 
 ```bash
 pip install specforge

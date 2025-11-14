@@ -9,39 +9,38 @@
 
 </div>
 
-## 📍 Overview
+## 📍 项目概览
 
-SpecForge is an ecosystem project developed by the SGLang team. It is a framework for training speculative decoding models so that you can smoothly port them over to the SGLang serving framework to speed up your inference.
+SpecForge 是由 SGLang 团队开发的生态项目，它是一个用于训练投机解码模型的框架，让你能够无缝地将模型移植到 SGLang 推理框架以加速推理。
 
-We have seen many open-source projects for speculative decoding, but most of them are not well-maintained or not directly compatible with SGLang. We prepared this project because we wish that the open-source community can enjoy a speculative decoding framework that is
-- regularly maintained by the SpecForge team: the code is runnable out-of-the-box
-- directly compatible with SGLang: there is no additional efforts for porting to SGLang
-- provide performant training capabilities: we provided online/offline/tensor-parallel/FSDP to suit your needs
+我们见过许多投机解码的开源项目，但其中多数维护不善或无法直接兼容 SGLang。我们推出这个项目，是希望开源社区能享受到这样一个投机解码框架：
+- 由 SpecForge 团队定期维护：代码开箱即用
+- 与 SGLang 直接兼容：无需额外移植工作
+- 提供高性能训练能力：支持在线/离线/张量并行/FSDP 模式满足多样化需求
 
+查看 [**我们的文档**](https://docs.sglang.ai/SpecForge/) 开始使用。
 
-Check out [**our documentation**](https://docs.sglang.ai/SpecForge/) to get started.
+## 🎉 新闻动态
 
-## 🎉 News
+- [2025-08] 🔔 SpecForge 被列为 LMSYS 的 [旗舰项目](https://lmsys.org/about/)。祝贺 SpecForge 团队！
+- [2025-08] 🔥 SpecForge 为 GPT-OSS 提供了 Eagle3 草稿模型。查看 [LMSYS.org](https://lmsys.org/blog/2025-08-27-gpt-oss/) 的博客
+- [2025-07] 🔥 SpecForge 与 Llama4-Eagle3 检查点一起发布。查看我们在 [LMSYS.org](https://lmsys.org/blog/2025-07-25-spec-forge/) 的博客
 
-- [2025-08] 🔔 SpecForge is listed as a [flagship project](https://lmsys.org/about/) in LMSYS. Congratulations to the SpecForge team!
-- [2025-08] 🔥 SpecForge powered the Eagle3 draft model for GPT-OSS. Check out the blog at [LMSYS.org](https://lmsys.org/blog/2025-08-27-gpt-oss/)
-- [2025-07] 🔥 SpecForge is released together with Llama4-Eagle3 checkpoints. Check out our blog at [LMSYS.org](https://lmsys.org/blog/2025-07-25-spec-forge/)
-
-## ✨ Acknowledgements
+## ✨ 致谢
 
 <img src="./assets/acknowledgements.png" alt="acknowledgements"></img>
 
-We would like to express our sincere gratitude to the official EAGLE team, especially Hongyang Zhang and Yuhui Li, for their invaluable contributions and support. Our thanks also go to the NVIDIA team—particularly Avery H and Izzy Putterman—and to the Google team, especially Ying Wang, for their insightful discussions and generous assistance throughout the project.
+我们衷心感谢 EAGLE 官方团队，特别是张洪洋和李宇辉，感谢他们的宝贵贡献和支持。我们也要感谢 NVIDIA 团队，特别是 Avery H 和 Izzy Putterman，以及 Google 团队，特别是王颖，感谢他们在整个项目过程中的深刻讨论和慷慨帮助。
 
-We are especially grateful to Meituan for their strong backing and meaningful contributions, which played a vital role in driving this project forward.
+我们特别感谢美团的大力支持和有意义的贡献，这在推动项目前进中发挥了至关重要的作用。
 
-This project has also been inspired by many outstanding open-source projects from the LLM community, including [EAGLE](https://github.com/SafeAILab/EAGLE), [BaldEagle](https://github.com/NickL77/BaldEagle), and [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer) and others. Their contributions and shared knowledge have greatly benefited our work.
+本项目也受到了 LLM 社区许多优秀开源项目的启发，包括 [EAGLE](https://github.com/SafeAILab/EAGLE)、[BaldEagle](https://github.com/NickL77/BaldEagle) 和 [TensorRT-Model-Optimizer](https://github.com/NVIDIA/TensorRT-Model-Optimizer) 等。他们的贡献和共享的知识极大地促进了我们的工作。
 
-## 💡 Special Thanks to Voltage Park
+## 💡 特别感谢 Voltage Park
 
-We would like to extend our sincere thanks to [Voltage Park](https://www.voltagepark.com/), our official infrastructure partner. As part of a formal collaboration with the SGLang team, Voltage Park provided critical GPU resources that empowered us to train and evaluate large-scale speculative decoding models efficiently and reliably. This partnership was instrumental in making SpecForge possible. We deeply appreciate Voltage Park’s mission to make cutting-edge AI infrastructure more accessible, and we look forward to continued collaboration as we push the boundaries of open-source LLM serving and optimization.
+我们衷心感谢 [Voltage Park](https://www.voltagepark.com/)，我们的官方基础设施合作伙伴。作为与 SGLang 团队正式合作的一部分，Voltage Park 提供了关键的 GPU 资源，使我们能够高效可靠地训练和评估大规模投机解码模型。这一合作关系对 SpecForge 的实现至关重要。我们深深感谢 Voltage Park 致力于使尖端 AI 基础设施更易获得的使命，并期待在我们推动开源 LLM 服务和优化边界的过程中继续合作。
 
-## 📃 Citation
+## 📃 引用
 
 ```bibtex
 @misc{specforge2025,

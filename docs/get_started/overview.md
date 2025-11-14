@@ -1,26 +1,26 @@
-## 🤔 Why SpecForge?
+## 🤔 为什么选择 SpecForge？
 
-We have seen many open-source projects for speculative decoding, but most of them are not well-maintained or not directly compatible with SGLang. We prepared this project because we wish that the open-source community can enjoy a speculative decoding framework that is
-- regularly maintained by the SGLang team: the code is runnable out-of-the-box
-- directly compatible with SGLang: there is no additional efforts for porting to SGLang
-- provide performant training capabilities: we provided online/offline/tensor-parallel/FSDP to suit your needs
+我们见过许多投机性解码的开源项目，但其中多数维护不善或无法直接兼容 SGLang。我们推出这个项目，是希望开源社区能享受到这样一个投机性解码框架：
+- 由 SGLang 团队定期维护：代码开箱即用
+- 与 SGLang 直接兼容：无需额外移植工作
+- 提供高性能训练能力：支持在线/离线/张量并行/FSDP 模式满足多样化需求
 
-## 🚀 Which training mode should I use?
+## 🚀 如何选择训练模式？
 
-We provide two orthogonal paths so everyone can start training in minutes, regardless of hardware budget — both are actively maintained, battle-tested daily in our CI, and guaranteed runnable out-of-the-box. Below is a comparison of the two methods.
+我们提供两条互补路径，无论硬件预算如何，皆可数分钟内启动训练——两者均受积极维护，每日在CI环境中实战验证，并保证开箱即用。以下为两种方法对比：
 
-| Method | Target Model | Disk Space Requirement | GPU Requirement | One-liner rationale |
+| 方法 | 目标模型 | 磁盘空间需求 | GPU 需求 | 一行说明 |
 | --- | --- | --- | --- | --- |
-| Online | Used during training | Small | More GPUs are needed if your target model is large | Generating auxiliary hidden states on the fly |
-| Offline | Only used during data preparation | Huge (e.g. ultrachat+sharegpt will need 12TB storage ) | as low as 1 GPU, as only need to accommodate the draft model  | Preparing auxiliary hidden states beforehand and only once |
+| 在线 | 训练期间使用 | 较小 | 目标模型较大时需更多 GPU | 实时生成辅助隐藏状态 |
+| 离线 | 仅用于数据准备阶段 | 巨大（例如ultrachat+sharegpt需12TB存储） | 低至1张GPU，仅需容纳草稿模型 | 预先一次性准备辅助隐藏状态 |
 
-> **Why does disk matter?**
-> During Eagle3 training, the frozen target model will first generate the hidden states for each token given the data sample. The hidden states are fed to the draft model for training.
-> Offline mode stores these hidden states to the local disk, so a small disk can be filled up fast.
-> Online mode only generates these hidden states on the fly without storing them to the disk, but needs to keep the target model resident in memory during training, trading GPU RAM for almost-zero disk footprint.
+> **为何磁盘空间至关重要？**
+> 在Eagle3训练过程中，冻结的目标模型会根据数据样本为每个令牌生成隐藏状态。这些隐藏状态会被输入到草稿模型中进行训练。
+> 离线模式会将隐藏状态存储至本地磁盘，因此小容量磁盘可能很快被占满。
+> 在线模式仅实时生成隐藏状态而不存储至磁盘，但训练期间需将目标模型常驻内存，以GPU内存为代价换取近乎零磁盘占用。
 
-## ⚡️ SGLang-ready
+## ⚡️ 兼容SGLang
 
-Whichever mode you pick, the checkpoint format is **byte-for-byte compatible** with [SGLang](https://github.com/sgl-project/sglang). There is no post-processing or weights manipulation required.
+无论选择何种模式，检查点格式均与[SGLang](https://github.com/sgl-project/sglang)实现**字节级兼容**。无需任何后处理或权重调整。
 
-Happy training!
+祝训练顺利！
