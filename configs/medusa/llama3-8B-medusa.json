@@ -44,9 +44,10 @@
 
   "_comment_training_hyperparameters": "推荐的训练超参数（与Eagle3对齐以保证公平对比）",
   "_training": {
-    "learning_rate": 1e-4,
-    "_lr_note": "与Eagle3相同(1e-4)，论文建议Medusa-1可用1e-3但为公平对比使用1e-4",
-    "_lr_paper": "AWS实现用1e-4 constant LR",
+    "learning_rate": 5e-5,
+    "_lr_note": "与Eagle3正式训练相同(5e-5)，来自run_llama3_eagle3_sgl_online.sh",
+    "_lr_eagle3_versions": "Eagle3有两版本: 简化online用1e-4(2epochs), 正式训练用5e-5(10epochs)",
+    "_lr_paper": "Medusa论文建议1e-4，但我们用5e-5以与Eagle3正式训练对齐",
 
     "batch_size_per_device": 1,
     "_batch_note": "与Eagle3相同，per device batch size",
@@ -80,7 +81,7 @@
   "_comment_comparison_eagle3": "与Eagle3的对比",
   "_comparison": {
     "same_as_eagle3": [
-      "learning_rate (1e-4)",
+      "learning_rate (5e-5, 正式训练版本)",
       "batch_size_per_device (1)",
       "num_epochs (10)",
       "warmup_ratio (0.015)",

@@ -51,8 +51,9 @@
 
   "_comment_training_hyperparameters": "推荐的训练超参数（与Eagle3对齐以保证公平对比）",
   "_training": {
-    "learning_rate": 1e-4,
-    "_lr_note": "与Eagle3相同(1e-4)，保证公平对比",
+    "learning_rate": 5e-5,
+    "_lr_note": "与Eagle3正式训练相同(5e-5)，保证公平对比",
+    "_lr_source": "来自Eagle3 sgl_online和offline脚本",
 
     "batch_size_per_device": 1,
     "_batch_note": "与Eagle3相同",
@@ -95,7 +96,7 @@
   "_comment_comparison_eagle3": "与Eagle3的对比",
   "_comparison": {
     "same_as_eagle3": [
-      "learning_rate (1e-4)",
+      "learning_rate (5e-5, 正式训练版本)",
       "batch_size_per_device (1)",
       "num_epochs (10)",
       "warmup_ratio (0.015)",

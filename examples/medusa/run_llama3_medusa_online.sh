@@ -60,7 +60,7 @@ echo ""
 echo "======================================================"
 echo "Training Hyperparameters (aligned with Eagle3):"
 echo "======================================================"
-echo "Learning Rate:      1e-4  (same as Eagle3)"
+echo "Learning Rate:      5e-5  (same as Eagle3 formal training)"
 echo "Batch Size:         1 per device (same as Eagle3)"
 echo "Gradient Accum:     4 steps (effective batch=4)"
 echo "Epochs:             10 (same as Eagle3)"
@@ -90,7 +90,7 @@ torchrun \
     --output-dir ${OUTPUT_DIR} \
     --num-epochs 10 \
     --batch-size 1 \
-    --learning-rate 1e-4 \
+    --learning-rate 5e-5 \
     --max-length 2048 \
     --num-heads 4 \
     --warmup-ratio 0.015 \

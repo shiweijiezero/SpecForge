@@ -23,7 +23,7 @@
 
 | 参数 | Eagle3 (examples) | Medusa论文 | 本配置 (Medusa) | 理由 |
 |------|-------------------|------------|-----------------|------|
-| **Learning Rate** | 1e-4 | 1e-4 (constant) | **1e-4** | 与Eagle对齐，论文AWS实现同样用1e-4 |
+| **Learning Rate** | 5e-5 | 1e-4 (constant) | **5e-5** | 与Eagle3正式训练对齐(sgl_online/offline) |
 | **Batch Size (per device)** | 1 | 1 | **1** | 与Eagle对齐 |
 | **Gradient Accumulation** | - | 16 | **4** | 有效batch=4 (更小以适应内存) |
 | **Epochs** | 10 | Not specified | **10** | 与Eagle对齐 |
@@ -33,8 +33,9 @@
 
 **重要说明**：
 - 论文推荐Medusa-1的LR可以更高（1e-3），因为只训练小的heads
-- 但为了**公平对比**，我们使用与Eagle3相同的1e-4
-- 如果训练不稳定，可以尝试提高到1e-3
+- 但为了**公平对比**，我们使用与Eagle3相同的5e-5（来自sgl_online和offline脚本）
+- Eagle3有两个版本：简化online用1e-4（2 epochs），正式训练用5e-5（10 epochs）
+- 我们选择5e-5以与正式训练对齐
 
 ---
 
@@ -89,7 +90,7 @@ Medusa: Input → ResBlock → LM Head (直接在base model输出上)
 
 为了确保Medusa和Eagle3的对比是**公平的**，我们统一了以下参数：
 
-1. ✅ **相同的学习率**：1e-4
+1. ✅ **相同的学习率**：5e-5（Eagle3正式训练）
 2. ✅ **相同的batch size**：1 per device
 3. ✅ **相同的训练轮数**：10 epochs
 4. ✅ **相同的warmup ratio**：0.015
