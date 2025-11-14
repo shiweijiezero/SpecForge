@@ -42,40 +42,16 @@
   "medusa_num_layers": 1,
   "_explanation_num_layers": "每个head的ResBlock层数，论文默认1层",
 
-  "_comment_training_hyperparameters": "推荐的训练超参数（与Eagle3对齐以保证公平对比）",
-  "_training": {
-    "learning_rate": 5e-5,
-    "_lr_note": "与Eagle3正式训练相同(5e-5)，来自run_llama3_eagle3_sgl_online.sh",
-    "_lr_eagle3_versions": "Eagle3有两版本: 简化online用1e-4(2epochs), 正式训练用5e-5(10epochs)",
-    "_lr_paper": "Medusa论文建议1e-4，但我们用5e-5以与Eagle3正式训练对齐",
-
-    "batch_size_per_device": 1,
-    "_batch_note": "与Eagle3相同，per device batch size",
-
-    "gradient_accumulation_steps": 4,
-    "_gradient_note": "有效batch size = 1 * 4 = 4，论文用16但我们用4节省内存",
-
-    "num_epochs": 10,
-    "_epoch_note": "与Eagle3相同(10 epochs)",
-
-    "warmup_ratio": 0.015,
-    "_warmup_note": "与Eagle3相同(0.015)，论文用0.1但我们对齐Eagle3",
-
-    "max_grad_norm": 0.5,
-    "_grad_clip_note": "与Eagle3相同，梯度裁剪阈值",
-
-    "optimizer": "AdamW",
-    "weight_decay": 0.0,
-    "_weight_decay_note": "Medusa heads通常不需要weight decay",
-
-    "lr_scheduler_type": "cosine",
-    "_scheduler_note": "与Eagle3相同，cosine annealing with warmup",
-
-    "max_length": 2048,
-    "_length_note": "序列最大长度",
-
-    "chat_template": "llama3",
-    "_template_note": "使用LLaMA 3的chat template"
+  "_comment_training_note": "训练超参数通过命令行参数设置，不在config文件中",
+  "_training_reference": "参考: examples/medusa/run_llama3_medusa_online.sh",
+  "_key_training_params": {
+    "_learning_rate": "5e-5 (与Eagle3对齐)",
+    "_batch_size": "1 per device",
+    "_num_epochs": "1 (与Eagle3基线对齐)",
+    "_warmup_ratio": "0.015",
+    "_max_grad_norm": "0.5",
+    "_max_length": "2048",
+    "_note": "这些参数在训练脚本中硬编码，方便跨机器使用"
   },
 
   "_comment_comparison_eagle3": "与Eagle3的对比",

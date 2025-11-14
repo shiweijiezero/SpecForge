@@ -8,7 +8,10 @@ set -e
 ROOT_DIR=$(pwd)
 TARGET_MODEL="Qwen/Qwen2.5-7B-Instruct"
 DRAFT_CONFIG="${ROOT_DIR}/configs/medusa/qwen2.5-7B-medusa.json"
+
+# ⚠️ 重要：使用与Eagle3完全相同的训练数据！
 TRAIN_DATA="${ROOT_DIR}/cache/dataset/sharegpt.jsonl"
+
 OUTPUT_DIR="${ROOT_DIR}/outputs/qwen25-7b-medusa"
 VOCAB_MAPPING="${ROOT_DIR}/cache/vocab_mapping_qwen25.pt"
 
@@ -55,25 +58,30 @@ fi
 # ==================== 训练参数说明 ====================
 echo ""
 echo "======================================================"
-echo "Training Hyperparameters (aligned with Eagle3):"
+echo "Medusa Training for Qwen2.5 7B"
 echo "======================================================"
-echo "Learning Rate:      5e-5  (same as Eagle3 formal training)"
-echo "Batch Size:         1 per device (same as Eagle3)"
-echo "Gradient Accum:     4 steps (effective batch=4)"
-echo "Epochs:             10 (same as Eagle3)"
-echo "Warmup Ratio:       0.015 (same as Eagle3)"
-echo "Max Grad Norm:      0.5 (same as Eagle3)"
-echo "Max Length:         2048 tokens"
+echo "⚠️  Parameters aligned with Eagle3 for fair comparison"
 echo ""
-echo "Medusa-specific:"
-echo "Num Heads:          4"
-echo "Num Layers/Head:    1 (ResBlock layers)"
-echo "Draft Backbone:     None (num_hidden_layers=0)"
+echo "Training Data:     ${TRAIN_DATA}"
+if [ -f "${TRAIN_DATA}" ]; then
+    echo "Data Size:         $(wc -l < ${TRAIN_DATA}) samples"
+fi
+echo ""
+echo "Hyperparameters:"
+echo "  Learning Rate:   5e-5  (Eagle3: 5e-5)"
+echo "  Batch Size:      1 per device"
+echo "  Epochs:          1  ← Aligned with Eagle3 baseline"
+echo "  Warmup Ratio:    0.015"
+echo "  Max Grad Norm:   0.5"
+echo "  Max Length:      2048"
+echo ""
+echo "Medusa Config:"
+echo "  Num Heads:       4"
+echo "  Draft Layers:    0 (no backbone)"
 echo ""
 echo "Qwen-specific:"
-echo "Hidden Size:        3584 (vs LLaMA 4096)"
-echo "Draft Vocab:        16000 (vs LLaMA 32000)"
-echo "Context Length:     32768 (vs LLaMA 8192)"
+echo "  Hidden Size:     3584 (vs LLaMA 4096)"
+echo "  Draft Vocab:     16000 (vs LLaMA 32000)"
 echo "======================================================"
 echo ""
 
@@ -81,6 +89,13 @@ echo ""
 echo "🚀 Starting Medusa-1 training..."
 echo "Training with $(nvidia-smi --list-gpus | wc -l) GPUs"
 echo ""
+
+# ==================== 训练命令 ====================
+# 参数说明：
+# --num-epochs 1:      与Eagle3基线对齐
+# --learning-rate 5e-5: 与Eagle3对齐
+# --batch-size 1:      与Eagle3对齐
+# --num-heads 4:       Medusa配置
 
 torchrun \
     --standalone \
@@ -90,7 +105,7 @@ torchrun \
     --draft-model-config ${DRAFT_CONFIG} \
     --train-data-path ${TRAIN_DATA} \
     --output-dir ${OUTPUT_DIR} \
-    --num-epochs 10 \
+    --num-epochs 1 \
     --batch-size 1 \
     --learning-rate 5e-5 \
     --max-length 2048 \

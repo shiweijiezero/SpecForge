@@ -21,21 +21,47 @@
 
 ### 2. 训练参数对比
 
-| 参数 | Eagle3 (examples) | Medusa论文 | 本配置 (Medusa) | 理由 |
-|------|-------------------|------------|-----------------|------|
-| **Learning Rate** | 5e-5 | 1e-4 (constant) | **5e-5** | 与Eagle3正式训练对齐(sgl_online/offline) |
-| **Batch Size (per device)** | 1 | 1 | **1** | 与Eagle对齐 |
-| **Gradient Accumulation** | - | 16 | **4** | 有效batch=4 (更小以适应内存) |
-| **Epochs** | 10 | Not specified | **10** | 与Eagle对齐 |
-| **Warmup Ratio** | 0.015 | 0.1 (cosine) | **0.015** | 与Eagle对齐 |
-| **Max Grad Norm** | 0.5 | - | **0.5** | 与Eagle对齐 |
-| **Draft Layers** | 1 | 0 (only heads) | **0** | Medusa无额外Transformer层 |
+**核心原则**：为了**公平对比**，Medusa应使用与Eagle3**完全相同**的训练设置。
+
+| 参数 | Eagle3 (sgl_online) | 本配置 (Medusa) | 说明 |
+|------|---------------------|-----------------|------|
+| **Learning Rate** | 5e-5 | **5e-5** | 来自run_llama3_eagle3_sgl_online.sh:58 |
+| **Batch Size (per device)** | 1 | **1** | 来自sgl_online.sh:57 |
+| **Warmup Ratio** | 0.015 | **0.015** | 来自sgl_online.sh:65 |
+| **Max Grad Norm** | 0.5 | **0.5** | 标准值 |
+| **Draft Layers** | 1 | **0** | Medusa架构差异（无backbone） |
+| **Max Length** | 2048 | **2048** | 序列长度 |
+
+**数据和Epochs设置 - 重要！**
+
+Eagle3脚本使用了大规模数据：
+- 数据：ShareGPT + Ultrachat 200k（>20万样本）
+- Total Steps：800,000步
+- Num Epochs：10
+
+**但实际实验中应该使用相同的数据和epochs！**
+
+如果您的Eagle3实验使用：
+- 数据量：50k样本
+- Epochs：1
+
+那么Medusa也应该使用：
+- **相同的50k样本**
+- **相同的1 epoch**
+
+**公平对比清单**：
+- ✅ 相同的数据集（同一个.jsonl文件）
+- ✅ 相同的数据量（50k或200k等）
+- ✅ 相同的训练轮数（1 epoch或10 epochs）
+- ✅ 相同的学习率（5e-5）
+- ✅ 相同的batch size（1）
+- ✅ 相同的warmup ratio（0.015）
+- ✅ 相同的max length（2048）
 
 **重要说明**：
-- 论文推荐Medusa-1的LR可以更高（1e-3），因为只训练小的heads
-- 但为了**公平对比**，我们使用与Eagle3相同的5e-5（来自sgl_online和offline脚本）
-- Eagle3有两个版本：简化online用1e-4（2 epochs），正式训练用5e-5（10 epochs）
-- 我们选择5e-5以与正式训练对齐
+- Eagle3论文脚本使用10 epochs + 200k+数据，但**您的实验设置可能不同**
+- 配置文件中的epochs等参数仅为示例，**实际使用时应根据您的Eagle3基线调整**
+- Medusa论文建议LR=1e-3（只训练heads），但为公平对比使用5e-5
 
 ---
 
@@ -88,21 +114,48 @@ Medusa: Input → ResBlock → LM Head (直接在base model输出上)
 
 ## 公平性对比保证
 
-为了确保Medusa和Eagle3的对比是**公平的**，我们统一了以下参数：
+### 关键原则：控制变量法
 
-1. ✅ **相同的学习率**：5e-5（Eagle3正式训练）
-2. ✅ **相同的batch size**：1 per device
-3. ✅ **相同的训练轮数**：10 epochs
-4. ✅ **相同的warmup ratio**：0.015
-5. ✅ **相同的梯度裁剪**：0.5
-6. ✅ **相同的词表映射**：draft_vocab_size与Eagle3一致
-7. ✅ **相同的数据**：复用Eagle3的数据处理pipeline
+为了确保Medusa和Eagle3的对比结果真实反映**算法本身的差异**，必须严格控制所有其他变量：
 
-**唯一差异**：
-- 架构不同（Medusa heads vs Eagle3 TTT）
-- 参数量不同（Medusa更少）
+### 必须相同的参数（控制变量）
 
-这样对比结果才能真实反映算法本身的差异！
+| 类别 | 参数 | 值 | 验证方法 |
+|------|------|-----|---------|
+| **数据** | 训练数据 | 完全相同的.jsonl文件 | 检查文件MD5 |
+| **数据** | 数据量 | 相同样本数（如50k） | `wc -l` |
+| **训练** | Epochs | 相同轮数（如1） | 检查训练日志 |
+| **训练** | Learning Rate | 5e-5 | 脚本参数 |
+| **训练** | Batch Size | 1 per device | 脚本参数 |
+| **训练** | Warmup Ratio | 0.015 | 脚本参数 |
+| **训练** | Max Grad Norm | 0.5 | 脚本参数 |
+| **训练** | Max Length | 2048 | 脚本参数 |
+| **训练** | Chat Template | 相同（llama3/qwen） | 脚本参数 |
+| **词表** | Draft Vocab Size | 相同映射策略 | 配置文件 |
+
+### 允许不同的参数（算法差异）
+
+| 参数 | Eagle3 | Medusa | 原因 |
+|------|--------|---------|------|
+| Draft Layers | 1 | 0 | 架构差异 |
+| Num Heads | 1 | 4 | 算法设计 |
+| 训练方法 | TTT递归 | 单次forward | 算法核心 |
+| 参数量 | ~135M | ~52M | 架构导致 |
+
+### 验证Checklist
+
+在进行对比实验前，请确认：
+
+- [ ] Medusa和Eagle3使用**完全相同**的训练数据文件
+- [ ] 数据量相同（通过`wc -l`验证）
+- [ ] Epochs相同（如您使用1 epoch，两者都用1）
+- [ ] 学习率相同（5e-5）
+- [ ] Batch size相同（1）
+- [ ] Max length相同（2048）
+- [ ] Warmup ratio相同（0.015）
+- [ ] 训练完成后，两个模型的总训练steps接近
+
+**警告**：如果以上任何参数不同，对比结果将不可靠！
 
 ---
 

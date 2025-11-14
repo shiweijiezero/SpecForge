@@ -49,38 +49,16 @@
   "medusa_num_layers": 1,
   "_explanation_num_layers": "每个head的ResBlock层数，论文默认1层",
 
-  "_comment_training_hyperparameters": "推荐的训练超参数（与Eagle3对齐以保证公平对比）",
-  "_training": {
-    "learning_rate": 5e-5,
-    "_lr_note": "与Eagle3正式训练相同(5e-5)，保证公平对比",
-    "_lr_source": "来自Eagle3 sgl_online和offline脚本",
-
-    "batch_size_per_device": 1,
-    "_batch_note": "与Eagle3相同",
-
-    "gradient_accumulation_steps": 4,
-    "_gradient_note": "有效batch size = 1 * 4 = 4",
-
-    "num_epochs": 10,
-    "_epoch_note": "与Eagle3相同(10 epochs)",
-
-    "warmup_ratio": 0.015,
-    "_warmup_note": "与Eagle3相同(0.015)",
-
-    "max_grad_norm": 0.5,
-    "_grad_clip_note": "与Eagle3相同",
-
-    "optimizer": "AdamW",
-    "weight_decay": 0.0,
-
-    "lr_scheduler_type": "cosine",
-    "_scheduler_note": "Cosine annealing with warmup",
-
-    "max_length": 2048,
-    "_length_note": "序列最大长度，可根据Qwen的长上下文能力调整到8K或更高",
-
-    "chat_template": "qwen",
-    "_template_note": "使用Qwen的chat template"
+  "_comment_training_note": "训练超参数通过命令行参数设置，不在config文件中",
+  "_training_reference": "参考: examples/medusa/run_qwen25_medusa_online.sh",
+  "_key_training_params": {
+    "_learning_rate": "5e-5 (与Eagle3对齐)",
+    "_batch_size": "1 per device",
+    "_num_epochs": "1 (与Eagle3基线对齐)",
+    "_warmup_ratio": "0.015",
+    "_max_grad_norm": "0.5",
+    "_max_length": "2048",
+    "_note": "这些参数在训练脚本中硬编码"
   },
 
   "_comment_qwen_specific": "Qwen特定的配置差异",

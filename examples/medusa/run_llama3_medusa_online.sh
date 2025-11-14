@@ -8,7 +8,10 @@ set -e
 ROOT_DIR=$(pwd)
 TARGET_MODEL="meta-llama/Llama-3.1-8B-Instruct"
 DRAFT_CONFIG="${ROOT_DIR}/configs/medusa/llama3-8B-medusa.json"
+
+# ⚠️ 重要：使用与Eagle3完全相同的训练数据！
 TRAIN_DATA="${ROOT_DIR}/cache/dataset/sharegpt.jsonl"
+
 OUTPUT_DIR="${ROOT_DIR}/outputs/llama3-8b-medusa"
 VOCAB_MAPPING="${ROOT_DIR}/cache/vocab_mapping_llama3.pt"
 
@@ -58,20 +61,26 @@ fi
 # ==================== 训练参数说明 ====================
 echo ""
 echo "======================================================"
-echo "Training Hyperparameters (aligned with Eagle3):"
+echo "Medusa Training for LLaMA 3.1 8B"
 echo "======================================================"
-echo "Learning Rate:      5e-5  (same as Eagle3 formal training)"
-echo "Batch Size:         1 per device (same as Eagle3)"
-echo "Gradient Accum:     4 steps (effective batch=4)"
-echo "Epochs:             10 (same as Eagle3)"
-echo "Warmup Ratio:       0.015 (same as Eagle3)"
-echo "Max Grad Norm:      0.5 (same as Eagle3)"
-echo "Max Length:         2048 tokens"
+echo "⚠️  Parameters aligned with Eagle3 for fair comparison"
 echo ""
-echo "Medusa-specific:"
-echo "Num Heads:          4 (论文推荐3-5，我们选4)"
-echo "Num Layers/Head:    1 (ResBlock layers)"
-echo "Draft Backbone:     None (num_hidden_layers=0)"
+echo "Training Data:     ${TRAIN_DATA}"
+if [ -f "${TRAIN_DATA}" ]; then
+    echo "Data Size:         $(wc -l < ${TRAIN_DATA}) samples"
+fi
+echo ""
+echo "Hyperparameters:"
+echo "  Learning Rate:   5e-5  (Eagle3: 5e-5)"
+echo "  Batch Size:      1 per device"
+echo "  Epochs:          1  ← Aligned with Eagle3 baseline"
+echo "  Warmup Ratio:    0.015"
+echo "  Max Grad Norm:   0.5"
+echo "  Max Length:      2048"
+echo ""
+echo "Medusa Config:"
+echo "  Num Heads:       4"
+echo "  Draft Layers:    0 (no backbone)"
 echo "======================================================"
 echo ""
 
@@ -79,6 +88,13 @@ echo ""
 echo "🚀 Starting Medusa-1 training..."
 echo "Training with $(nvidia-smi --list-gpus | wc -l) GPUs"
 echo ""
+
+# ==================== 训练命令 ====================
+# 参数说明：
+# --num-epochs 1:      与Eagle3基线对齐（实际实验用1 epoch）
+# --learning-rate 5e-5: 与Eagle3 sgl_online对齐
+# --batch-size 1:      与Eagle3对齐
+# --num-heads 4:       Medusa论文推荐3-5，我们选4
 
 torchrun \
     --standalone \
@@ -88,7 +104,7 @@ torchrun \
     --draft-model-config ${DRAFT_CONFIG} \
     --train-data-path ${TRAIN_DATA} \
     --output-dir ${OUTPUT_DIR} \
-    --num-epochs 10 \
+    --num-epochs 1 \
     --batch-size 1 \
     --learning-rate 5e-5 \
     --max-length 2048 \
